@@ -11,11 +11,12 @@ from setuptools import find_packages, setup
 
 here = path.abspath(path.dirname(__file__))
 
-with io.open('README.rst', 'rt', encoding='utf8') as f:
+with open(path.join(here, 'README.rst')) as f:
     readme = f.read()
 
-with open(path.join(here, 'requirements.txt')) as f:
-    requirements = [line for line in f.read().split('\n') if line]
+REQUIRES = [
+    'Flask==1.0.2',
+]
 
 setup(
     name='checkout-server',
@@ -26,14 +27,16 @@ setup(
     maintainer_email='bogdan.ciobotaru1@gmail.com',
     description='Backend logic for handling Stripe orders for Doodance clients.',
     long_description=readme,
-    packages=find_packages(),
+    packages=find_packages(exclude=['tests', 'tests.*']),
     include_package_data=True,
     zip_safe=False,
-    install_requires=requirements,
+    install_requires=REQUIRES,
     extras_require={
-        'test': [
-            'pytest',
-            'coverage',
-        ],
+        'dev': ['pytest', 'coverage', 'flake8'],
     },
+    python_requires='>=3',
+    classifiers=[
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.7',
+    ],
 )

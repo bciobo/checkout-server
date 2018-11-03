@@ -2,9 +2,8 @@
 
 help:
 	@echo
-	@echo "  test       run tests"
+	@echo "  test       run tests & linter"
 	@echo "  lint       check style"
-	@echo "  docs       generate docs"
 	@echo "  clean      remove build and python file artifacts"
 	@echo "  dev        install in development mode"
 	@echo "  install"
@@ -12,8 +11,13 @@ help:
 	@echo "  help       print this message"
 	@echo
 
-test:
+test: lint
 	py.test --strict tests
+
+clean:
+	find . -name '*.pyc' -delete
+	find . -name __pycache__ -delete
+	rm -rf .coverage dist build htmlcov
 
 coverage:
 	coverage run --source checkout_server setup.py test
@@ -22,18 +26,7 @@ coverage:
 	@echo "coverage report: file://`pwd`/htmlcov/index.html"
 
 lint:
-	flake8 checkout_server tests manage.py
-
-docs:
-	sphinx-apidoc -o docs/ checkout_server
-	$(MAKE) -C docs clean
-	$(MAKE) -C docs html
-	@echo "html docs: file://`pwd`/docs/_build/html/index.html"
-
-clean:
-	find . -name '*.pyc' -delete
-	find . -name __pycache__ -delete
-	rm -rf .coverage dist build htmlcov
+	flake8 checkout_server tests
 
 dist: clean
 	python setup.py sdist
@@ -41,11 +34,10 @@ dist: clean
 	ls -l dist
 
 dev: clean
-	pip install -r requirements_dev.txt
-	python setup.py develop
+	pip install -e '.[dev]'
 
 install: clean
 	python setup.py install
 
 run: clean
-	python manage.py runserver --port 7001
+	FLASK_APP=checkout_server.app FLASK_ENV=development flask run --port 7001
