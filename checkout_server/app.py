@@ -10,6 +10,7 @@ from . import resources
 import stripe
 from flask import Flask, request
 from flask.logging import default_handler
+from flask_cors import CORS
 
 
 class RequestFormatter(logging.Formatter):
@@ -64,5 +65,5 @@ def make_app(settings_override=None):
     # webhook
     app.add_url_rule('/webhook/',
                      view_func=webhook_resource, methods=['POST', ])
-
+    CORS(app)
     return app
