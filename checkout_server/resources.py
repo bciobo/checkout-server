@@ -38,17 +38,16 @@ class ProductsResource(CheckoutView):
                 return jsonify(product)
             except Exception as e:
                 logger.error(e)
-                abort(404, 'Doodance product ID is unknown')
+                abort(404, 'Doodance: product ID is unknown')
 
 
 class OrdersResource(CheckoutView):
     def get(self, order_id):
-        if not order_id:
-            # return 404
-            return 'ORDER LIST'
-        else:
-            # return order with passed ID
-            return 'ORDER ' + str(order_id)
+        try:
+            return jsonify(self.stripe.Order.retrieve(order_id))
+        except Exception as e:
+            logger.error(e)
+            abort(404, 'Doodance: order ID is unknown')
 
     def post(self):
         # create new order
