@@ -40,4 +40,4 @@ install: clean
 	python setup.py install
 
 run: clean
-	FLASK_APP=checkout_server.app FLASK_ENV=development flask run --port 7001
+	STRIPE_LOG=debug FLASK_APP=checkout_server.app FLASK_ENV=development flask run --port 7001

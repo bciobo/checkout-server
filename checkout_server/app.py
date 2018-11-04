@@ -5,9 +5,9 @@ checkout-server.app
 ~~~~~~~~~~~~
 
 """
-
-from flask import Flask
 from . import resources
+import stripe
+from flask import Flask
 
 
 def make_app(settings_override=None):
@@ -19,11 +19,18 @@ def make_app(settings_override=None):
     app.config.from_pyfile('application.cfg', silent=True)
     app.config.from_object(settings_override)
 
+    # Stripe
+    stripe.api_key = app.config['SECRET_KEY']
+
     # init and hook resources
-    products_resource = resources.ProductsResource.as_view('products_api')
-    orders_resource = resources.OrdersResource.as_view('orders_api')
-    pay_orders_resource = resources.PayOrdersResource.as_view('pay_orders_api')
-    webhook_resource = resources.Webhook.as_view('webhook')
+    config_resource = resources.ConfigResource.as_view('config_api')
+    products_resource = resources.ProductsResource.as_view('products_api', stripe)
+    orders_resource = resources.OrdersResource.as_view('orders_api', stripe)
+    pay_orders_resource = resources.PayOrdersResource.as_view('pay_orders_api', stripe)
+    webhook_resource = resources.Webhook.as_view('webhook', stripe)
+    # config
+    app.add_url_rule('/config/',
+                     view_func=config_resource, methods=['GET', ])
     # products
     app.add_url_rule('/products/', defaults={'product_id': None},
                      view_func=products_resource, methods=['GET', ])

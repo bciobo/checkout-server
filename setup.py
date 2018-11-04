@@ -16,6 +16,7 @@ with open(path.join(here, 'README.rst')) as f:
 
 REQUIRES = [
     'Flask==1.0.2',
+    'stripe==2.11.0'
 ]
 
 setup(

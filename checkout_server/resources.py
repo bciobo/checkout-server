@@ -6,9 +6,23 @@ checkout-server.resources
 
 """
 from flask.views import MethodView
+from flask import current_app, jsonify
 
 
-class ProductsResource(MethodView):
+class CheckoutView(MethodView):
+
+    def __init__(self, stripe):
+        self.stripe = stripe
+
+
+class ConfigResource(MethodView):
+    def get(self):
+        config = {'country': current_app.config.get('CHECKOUT_COUNTRY', 'DE'),
+                  'currency': current_app.config.get('CHECKOUT_CURRENCY', 'eur')}
+        return jsonify(config)
+
+
+class ProductsResource(CheckoutView):
     def get(self, product_id):
         if not product_id:
             # return all available products
@@ -18,7 +32,7 @@ class ProductsResource(MethodView):
             return 'PRODUCT ' + str(product_id)
 
 
-class OrdersResource(MethodView):
+class OrdersResource(CheckoutView):
     def get(self, order_id):
         if not order_id:
             # return 404
@@ -38,11 +52,11 @@ class OrdersResource(MethodView):
         pass
 
 
-class PayOrdersResource(MethodView):
+class PayOrdersResource(CheckoutView):
     def post(self):
         print('paying an order...')
 
 
-class Webhook(MethodView):
+class Webhook(CheckoutView):
     def post(self):
         print('handling STRIPE event...')
