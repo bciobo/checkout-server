@@ -21,6 +21,8 @@ def make_app(settings_override=None):
 
     # Stripe
     stripe.api_key = app.config['SECRET_KEY']
+    stripe.set_app_info(name='Doodance checkout server', version=app.config.get('API_VERSION'))
+    stripe.default_http_client = stripe.http_client.RequestsClient()
 
     # init and hook resources
     config_resource = resources.ConfigResource.as_view('config_api')
