@@ -5,8 +5,11 @@ checkout-server.resources
 ~~~~~~~~~~~~
 
 """
+import logging
 from flask.views import MethodView
-from flask import current_app, jsonify
+from flask import current_app, jsonify, abort
+
+logger = logging.getLogger(__name__)
 
 
 class CheckoutView(MethodView):
@@ -27,10 +30,15 @@ class ProductsResource(CheckoutView):
     def get(self, product_id):
         if not product_id:
             # return all available products
-            return 'PRODUCT LIST'
+            return jsonify(self.stripe.Product.list(active=True))
         else:
             # return product with passed ID
-            return 'PRODUCT ' + str(product_id)
+            try:
+                product = self.stripe.Product.retrieve(id=product_id)
+                return jsonify(product)
+            except Exception as e:
+                logger.error(e)
+                abort(404, 'Doodance product ID is unknown')
 
 
 class OrdersResource(CheckoutView):
