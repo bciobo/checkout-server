@@ -5,9 +5,18 @@ checkout-server.app
 ~~~~~~~~~~~~
 
 """
+import logging
 from . import resources
 import stripe
-from flask import Flask
+from flask import Flask, request
+from flask.logging import default_handler
+
+
+class RequestFormatter(logging.Formatter):
+    def format(self, record):
+        record.url = request.url
+        record.remote_addr = request.remote_addr
+        return super().format(record)
 
 
 def make_app(settings_override=None):
@@ -18,10 +27,16 @@ def make_app(settings_override=None):
     app.config.from_object('checkout_server.settings')
     app.config.from_pyfile('application.cfg', silent=True)
     app.config.from_object(settings_override)
+    # logging formatter for requests
+    formatter = RequestFormatter(
+        '[%(asctime)s] %(remote_addr)s requested %(url)s\n'
+        '%(levelname)s in %(module)s: %(message)s'
+    )
+    default_handler.setFormatter(formatter)
 
     # Stripe
     stripe.api_key = app.config['SECRET_KEY']
-    stripe.set_app_info(name='Doodance checkout server', version=app.config.get('API_VERSION'))
+    stripe.api_version = version = app.config.get('API_VERSION')
     stripe.default_http_client = stripe.http_client.RequestsClient()
 
     # init and hook resources
@@ -30,6 +45,7 @@ def make_app(settings_override=None):
     orders_resource = resources.OrdersResource.as_view('orders_api', stripe)
     pay_orders_resource = resources.PayOrdersResource.as_view('pay_orders_api', stripe)
     webhook_resource = resources.Webhook.as_view('webhook', stripe)
+
     # config
     app.add_url_rule('/config/',
                      view_func=config_resource, methods=['GET', ])

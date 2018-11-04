@@ -5,11 +5,10 @@ checkout-server.resources
 ~~~~~~~~~~~~
 
 """
-import logging
+from stripe.error import InvalidRequestError
 from flask.views import MethodView
-from flask import current_app, jsonify, abort
+from flask import current_app as app, jsonify, abort
 
-logger = logging.getLogger(__name__)
 
 
 class CheckoutView(MethodView):
@@ -20,9 +19,9 @@ class CheckoutView(MethodView):
 
 class ConfigResource(MethodView):
     def get(self):
-        config = {'country': current_app.config.get('CHECKOUT_COUNTRY', 'DE'),
-                  'currency': current_app.config.get('CHECKOUT_CURRENCY', 'eur'),
-                  'stripePublishableKey': current_app.config.get('PUBLISHABLE_KEY', '')}
+        config = {'country': app.config.get('CHECKOUT_COUNTRY', 'DE'),
+                  'currency': app.config.get('CHECKOUT_CURRENCY', 'eur'),
+                  'stripePublishableKey': app.config.get('PUBLISHABLE_KEY', '')}
         return jsonify(config)
 
 
@@ -36,8 +35,11 @@ class ProductsResource(CheckoutView):
             try:
                 product = self.stripe.Product.retrieve(id=product_id)
                 return jsonify(product)
+            except InvalidRequestError as invalid_req_err:
+                app.logger.error(invalid_req_err.json_body.get('error'))
             except Exception as e:
-                logger.error(e)
+                app.logger.error(e)
+            finally:
                 abort(404, 'Doodance: product ID is unknown')
 
 
@@ -45,8 +47,11 @@ class OrdersResource(CheckoutView):
     def get(self, order_id):
         try:
             return jsonify(self.stripe.Order.retrieve(order_id))
+        except InvalidRequestError as invalid_req_err:
+            app.logger.error(invalid_req_err.json_body.get('error'))
         except Exception as e:
-            logger.error(e)
+            app.logger.error(e)
+        finally:
             abort(404, 'Doodance: order ID is unknown')
 
     def post(self):
