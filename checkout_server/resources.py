@@ -18,7 +18,8 @@ class CheckoutView(MethodView):
 class ConfigResource(MethodView):
     def get(self):
         config = {'country': current_app.config.get('CHECKOUT_COUNTRY', 'DE'),
-                  'currency': current_app.config.get('CHECKOUT_CURRENCY', 'eur')}
+                  'currency': current_app.config.get('CHECKOUT_CURRENCY', 'eur'),
+                  'stripePublishableKey': current_app.config.get('PUBLISHABLE_KEY', '')}
         return jsonify(config)
 
 
