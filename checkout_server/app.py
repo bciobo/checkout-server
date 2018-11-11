@@ -56,10 +56,10 @@ def make_app(settings_override=None):
     app.add_url_rule('/products/<product_id>',
                      view_func=products_resource, methods=['GET', ])
     # orders
-    app.add_url_rule('/orders/', defaults={'order_id': None},
+    app.add_url_rule('/orders/',
                      view_func=orders_resource, methods=['POST', ])
-    app.add_url_rule('/orders/<order_id>',
-                     view_func=orders_resource, methods=['GET', 'PATCH'])
+    app.add_url_rule('/orders/<order_id>', defaults={'order_id': None},
+                     view_func=orders_resource, methods=['GET', ])
     app.add_url_rule('/orders/<order_id>/pay',
                      view_func=pay_orders_resource, methods=['POST', ])
     # webhook
