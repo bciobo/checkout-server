@@ -77,7 +77,6 @@ class OrdersResource(CheckoutView):
         """
         try:
             form_data = json.loads(request.data)
-            app.logger.debug('secret key %s' % self.stripe.api_key)
             new_order = self.stripe.Order.create(
                 currency=form_data.get('currency'),
                 items=form_data.get('items'),
@@ -127,8 +126,6 @@ class PayOrdersResource(CheckoutView):
             abort(404, 'Doodance: order ID is unknown')
         except Exception as e:
             app.logger.error(e)
-            app.logger.error(request_data)
-            app.logger.error(app.config)
             abort(404, 'Doodance: error while paying order')
 
 

@@ -37,7 +37,6 @@ def make_app(settings_override=None):
 
     # Stripe
     stripe.api_key = app.config['SECRET_KEY']
-    app.logger.debug('secret key %s' % stripe.api_key)
     stripe.api_version = version = app.config.get('API_VERSION')
     stripe.default_http_client = stripe.http_client.RequestsClient()
 
