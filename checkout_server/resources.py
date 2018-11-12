@@ -77,6 +77,7 @@ class OrdersResource(CheckoutView):
         """
         try:
             form_data = json.loads(request.data)
+            app.logger.debug('secret key %s' % self.stripe.api_key)
             new_order = self.stripe.Order.create(
                 currency=form_data.get('currency'),
                 items=form_data.get('items'),
