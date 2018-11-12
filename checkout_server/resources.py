@@ -126,6 +126,8 @@ class PayOrdersResource(CheckoutView):
             abort(404, 'Doodance: order ID is unknown')
         except Exception as e:
             app.logger.error(e)
+            app.logger.error(request_data)
+            app.logger.error(app.config)
             abort(404, 'Doodance: error while paying order')
 
 
