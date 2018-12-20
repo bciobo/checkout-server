@@ -115,6 +115,9 @@ class PayOrdersResource(CheckoutView):
             source_status = source.get('status')
             if source_status and source_status == 'chargeable':
                 order.pay(source=source['id'])
+            elif source_status and source_status == 'pending' or source_status == 'paid':
+                # Somehow this Order has already been paid for -- abandon request.
+                return jsonify({'source': source, 'order': order})
             else:
                 app.logger.error('The source was not chargeable: %s, for order %s' % (source, order))
                 abort(404, 'Doodance: the source was not chargeable')
@@ -126,7 +129,7 @@ class PayOrdersResource(CheckoutView):
             abort(404, 'Doodance: order ID is unknown')
         except Exception as e:
             app.logger.error(e)
-            abort(404, 'Doodance: error while paying order')
+            abort(jsonify(error='Doodance: error while paying order %s' % e))
 
 
 class Webhook(CheckoutView):
