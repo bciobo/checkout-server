@@ -23,7 +23,7 @@ class RequestFormatter(logging.Formatter):
 def make_app(settings_override=None):
     """Create and configure the Flask app.
     """
-    app = Flask(__name__, instance_relative_config=True)
+    app = Flask(__name__, instance_relative_config=True, static_url_path='')
 
     app.config.from_object('checkout_server.settings')
     app.config.from_pyfile('application.cfg', silent=True)
@@ -46,6 +46,7 @@ def make_app(settings_override=None):
     orders_resource = resources.OrdersResource.as_view('orders_api', stripe)
     pay_orders_resource = resources.PayOrdersResource.as_view('pay_orders_api', stripe)
     webhook_resource = resources.Webhook.as_view('webhook', stripe)
+    static_resource = resources.Bundle.as_view('bundle')
 
     # config
     app.add_url_rule('/config/',
@@ -65,5 +66,9 @@ def make_app(settings_override=None):
     # webhook
     app.add_url_rule('/webhook/',
                      view_func=webhook_resource, methods=['POST', ])
+    # static files
+    app.add_url_rule('/bundle/<path:filename>',
+                     view_func=static_resource, methods=['GET', ])
+
     CORS(app)
     return app

@@ -8,7 +8,7 @@ checkout-server.resources
 import json
 from stripe.error import InvalidRequestError
 from flask.views import MethodView
-from flask import current_app as app, jsonify, abort, request
+from flask import current_app as app, jsonify, abort, request, send_from_directory
 
 
 def dynamic_3ds(stripe, source, order):
@@ -206,3 +206,9 @@ class Webhook(CheckoutView):
             return jsonify({'status': 'failed'})
 
         return jsonify({'status': 'success'})
+
+
+class Bundle(MethodView):
+    def get(self, filename):
+        print('fetching ', filename)
+        return send_from_directory('bundle', filename)
