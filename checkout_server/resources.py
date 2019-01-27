@@ -185,7 +185,7 @@ class Webhook(CheckoutView):
             charge = data_object
             print('Doodance: Webhook received! The charge %s succeeded' % charge["id"])
             # Get the order data
-            order = self.stripe.Order.retrieve(charge['metadata']['order'])
+            order = self.stripe.Order.retrieve(charge['source']['metadata']['order'])
             # Update the order metadata
             order.status = 'paid'
             order.save()
