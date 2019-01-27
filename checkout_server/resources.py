@@ -187,8 +187,9 @@ class Webhook(CheckoutView):
             # Get the order data
             order = self.stripe.Order.retrieve(charge['source']['metadata']['order'])
             # Update the order metadata
-            order.status = 'paid'
-            order.save()
+            if order.status != 'paid':
+                order.status = 'paid'
+                order.save()
 
         # Monitor `source.failed`, `source.canceled`, and `charge.failed` events.
         if event['type'] in ['source.failed', 'source.canceled', 'charge.failed'] or \
