@@ -52,9 +52,9 @@ class ProductsResource(CheckoutView):
                 product = self.stripe.Product.retrieve(id=product_id)
                 return jsonify(product)
             except InvalidRequestError as invalid_req_err:
-                app.logger.error(invalid_req_err.json_body.get('error'))
+                print(invalid_req_err.json_body.get('error'))
             except Exception as e:
-                app.logger.error(e)
+                print(e)
                 abort(404, 'Doodance: product ID is unknown')
 
 
@@ -66,9 +66,9 @@ class OrdersResource(CheckoutView):
         try:
             return jsonify(self.stripe.Order.retrieve(order_id))
         except InvalidRequestError as invalid_req_err:
-            app.logger.error(invalid_req_err.json_body.get('error'))
+            print(invalid_req_err.json_body.get('error'))
         except Exception as e:
-            app.logger.error(e)
+            print(e)
             abort(404, 'Doodance: order ID is unknown')
 
     def post(self):
@@ -87,7 +87,7 @@ class OrdersResource(CheckoutView):
             return jsonify({'order': new_order})
 
         except Exception as e:
-            app.logger.error(e)
+            print(e)
             abort(404, 'Doodance: error while creating order')
 
 
@@ -119,16 +119,16 @@ class PayOrdersResource(CheckoutView):
                 # Somehow this Order has already been paid for -- abandon request.
                 return jsonify({'source': source, 'order': order})
             else:
-                app.logger.error('The source was not chargeable: %s, for order %s' % (source, order))
+                print('The source was not chargeable: %s, for order %s' % (source, order))
                 abort(404, 'Doodance: the source was not chargeable')
 
             return jsonify({'order': order, 'source': source})
 
         except InvalidRequestError as invalid_req_err:
-            app.logger.error(invalid_req_err.json_body.get('error'))
+            print(invalid_req_err.json_body.get('error'))
             abort(404, 'Doodance: order ID is unknown')
         except Exception as e:
-            app.logger.error(e)
+            print(e)
             abort(jsonify(error='Doodance: error while paying order %s' % e))
 
 
@@ -148,7 +148,7 @@ class Webhook(CheckoutView):
         webhook_secret = app.config.get('WEBHOOK_SECRET')
 
         if not webhook_secret:
-            app.logger.warning('Doodance: Stripe webhook secret not configured.')
+            print('Doodance: Stripe webhook secret not configured.')
             data = event['data']
         else:
             signature = request.headers.get('stripe-signature')
@@ -158,7 +158,7 @@ class Webhook(CheckoutView):
                                                             secret=webhook_secret)
                 data = event['data']
             except Exception as e:
-                app.logger.error('Webhook signature verification failed %s' % e)
+                print('Webhook signature verification failed %s' % e)
                 abort(404, 'Doodance: Webhook signature verification failed')
 
         data_object = data['object']
@@ -168,11 +168,11 @@ class Webhook(CheckoutView):
                 and data_object['status'] == 'chargeable' \
                 and 'order' in data_object['metadata']:
             source = data_object
-            app.logger.info('Doodance: Webhook received! The source %s is chargeable' % source["id"])
+            print('Doodance: Webhook received! The source %s is chargeable' % source["id"])
             # Get the order data
             order = self.stripe.Order.retrieve(source['metadata']['order'])
             # Check the order is payable
-            order_status = order['metadata']['status']
+            order_status = order.get('status')
             if order_status in ['pending', 'paid', 'failed']:
                 abort(404, 'Doodance: Order cannot be paid because it has status "%s"' % order_status)
             # Pay the order
@@ -183,24 +183,24 @@ class Webhook(CheckoutView):
                 and data_object['status'] == 'succeeded' \
                 and 'order' in data_object['source']['metadata']:
             charge = data_object
-            app.logger.info('Doodance: Webhook received! The charge %s succeeded' % charge["id"])
+            print('Doodance: Webhook received! The charge %s succeeded' % charge["id"])
             # Get the order data
             order = self.stripe.Order.retrieve(charge['metadata']['order'])
             # Update the order metadata
-            order.metadata['status'] = 'paid'
+            order.status = 'paid'
             order.save()
 
         # Monitor `source.failed`, `source.canceled`, and `charge.failed` events.
         if event['type'] in ['source.failed', 'source.canceled', 'charge.failed'] or \
                 (data_object['object'] in ['source', 'charge'] and data_object['status'] in ['failed', 'canceled']):
 
-            app.logger.info('Doodance: Webhook received! Failure for %s' % data_object["id"])
+            print('Doodance: Webhook received! Failure for %s' % data_object["id"])
 
             if data_object['metadata'].get('order'):
                 # Get the order data
                 order = self.stripe.Order.retrieve(data_object['metadata']['order'])
                 # Update the order metadata
-                order.metadata['status'] = 'failed'
+                order.status = 'failed'
                 order.save()
 
             return jsonify({'status': 'failed'})
@@ -210,5 +210,4 @@ class Webhook(CheckoutView):
 
 class Bundle(MethodView):
     def get(self, filename):
-        print('fetching ', filename)
         return send_from_directory('bundle', filename)

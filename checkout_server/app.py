@@ -37,7 +37,7 @@ def make_app(settings_override=None):
 
     # Stripe
     stripe.api_key = app.config['SECRET_KEY']
-    stripe.api_version = version = app.config.get('API_VERSION')
+    stripe.api_version = app.config.get('API_VERSION')
     stripe.default_http_client = stripe.http_client.RequestsClient()
 
     # init and hook resources

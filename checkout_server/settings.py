@@ -9,13 +9,10 @@ import os
 
 # Stripe
 COUNTRY = 'DE'
-API_VERSION = '2018-02-06'
-PUBLISHABLE_KEY = os.getenv('STRIPE_PUBLISHABLE_KEY',
-                            'pk_test_CiXf29IdSdWEmeZGORUfnSFc')
-SECRET_KEY = os.getenv('STRIPE_SECRET_KEY',
-                       'sk_test_qa9ceFzzUpWu3EvMHsoHs65d')
-WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET',
-                           'whsec_TUjpJ0NduzHQfHFciBPN5JcsmECA97Bj')
+API_VERSION = '2018-02-28'
+PUBLISHABLE_KEY = os.getenv('STRIPE_PUBLISHABLE_KEY')
+SECRET_KEY = os.getenv('STRIPE_SECRET_KEY')
+WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET')
 
 # Checkout form
 CHECKOUT_COUNTRY = 'DE'
