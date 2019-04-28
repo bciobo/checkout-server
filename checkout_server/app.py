@@ -6,7 +6,8 @@ checkout-server.app
 
 """
 import logging
-from . import resources, services
+from checkout_server import resources
+from checkout_server.services import CouponCMS
 import stripe
 from flask import Flask, request
 from flask.logging import default_handler
@@ -41,7 +42,7 @@ def make_app(settings_override=None):
     stripe.default_http_client = stripe.http_client.RequestsClient()
 
     # Webflow CMS
-    webflow_cms = services.WebflowCMS(app.config['WEBFLOW_API_TOKEN'], app.config['WEBFLOW_CMS_COLLECTION_ID'])
+    coupon_cms = CouponCMS(app.config['WEBFLOW_API_TOKEN'], app.config['WEBFLOW_CMS_COLLECTION_ID'])
 
     # init and hook resources
     config_resource = resources.ConfigResource.as_view('config_api')
@@ -50,6 +51,7 @@ def make_app(settings_override=None):
     pay_orders_resource = resources.PayOrdersResource.as_view('pay_orders_api', stripe)
     webhook_resource = resources.Webhook.as_view('webhook', stripe)
     static_resource = resources.Bundle.as_view('bundle')
+    coupon_resource = resources.CouponResource.as_view('coupons', coupon_cms)
 
     # config
     app.add_url_rule('/config/',
@@ -72,6 +74,9 @@ def make_app(settings_override=None):
     # static files
     app.add_url_rule('/bundle/<path:filename>',
                      view_func=static_resource, methods=['GET', ])
+    # webhook
+    app.add_url_rule('/validate-coupon/',
+                     view_func=coupon_resource, methods=['POST', ])
 
     CORS(app)
     return app

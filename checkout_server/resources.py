@@ -9,6 +9,7 @@ import json
 from stripe.error import InvalidRequestError
 from flask.views import MethodView
 from flask import current_app as app, jsonify, abort, request, send_from_directory
+from checkout_server.models import InvalidCouponError, InvalidAmountError
 
 
 def dynamic_3ds(stripe, source, order):
@@ -31,6 +32,7 @@ class ConfigResource(MethodView):
     """
     Retrieve form config and Stripe publishable key.
     """
+
     def get(self):
         config = {'country': app.config.get('CHECKOUT_COUNTRY', 'DE'),
                   'currency': app.config.get('CHECKOUT_CURRENCY', 'eur'),
@@ -42,6 +44,7 @@ class ProductsResource(CheckoutView):
     """
     Retrieve all or one product.
     """
+
     def get(self, product_id):
         if not product_id:
             # return all available products
@@ -62,6 +65,7 @@ class OrdersResource(CheckoutView):
     """
     Retrieve order data.
     """
+
     def get(self, order_id):
         try:
             return jsonify(self.stripe.Order.retrieve(order_id))
@@ -143,6 +147,7 @@ class Webhook(CheckoutView):
 
     It pays the order or update the order metadata according to status of source/charge.
     """
+
     def post(self):
         event = json.loads(request.data)
         webhook_secret = app.config.get('WEBHOOK_SECRET')
@@ -212,3 +217,30 @@ class Webhook(CheckoutView):
 class Bundle(MethodView):
     def get(self, filename):
         return send_from_directory('bundle', filename)
+
+
+class CouponResource(MethodView):
+    def __init__(self, coupon_cms):
+        self.coupon_cms = coupon_cms
+
+    def post(self):
+        request_data = json.loads(request.data)
+        coupon_code = request_data.get('code')
+        price = request_data.get('price')
+
+        if not coupon_code or not price:
+            return abort(400, 'Missing coupon code or price information.')
+
+        coupon = self.coupon_cms.get_coupon_by_code(coupon_code)
+
+        if not coupon:
+            return abort(404, 'No coupon found with this code.')
+
+        try:
+            new_price = coupon.apply(price)
+        except InvalidAmountError:
+            return abort(400, 'Invalid price lower than 0.')
+        except InvalidCouponError:
+            return abort(403, 'Coupon code not valid.')
+
+        return jsonify({'new_price': new_price, 'discount': price - new_price})

@@ -13,14 +13,6 @@ from checkout_server.models import Coupon
 logger = logging.getLogger(__file__)
 
 
-class InvalidAmountError(Exception):
-    pass
-
-
-class InvalidCouponError(Exception):
-    pass
-
-
 class CouponCMS:
     def __init__(self, api_token, collection_id):
         self.api_token = api_token

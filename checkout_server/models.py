@@ -10,9 +10,15 @@ from datetime import datetime
 import attr
 from attr import validators
 
-from checkout_server.services import InvalidAmountError, InvalidCouponError
-
 datetime_format = "%Y-%m-%dT%H:%M:%S.%fZ"
+
+
+class InvalidCouponError(Exception):
+    pass
+
+
+class InvalidAmountError(Exception):
+    pass
 
 
 @attr.s
