@@ -6,7 +6,7 @@ checkout-server.app
 
 """
 import logging
-from . import resources
+from . import resources, services
 import stripe
 from flask import Flask, request
 from flask.logging import default_handler
@@ -39,6 +39,9 @@ def make_app(settings_override=None):
     stripe.api_key = app.config['SECRET_KEY']
     stripe.api_version = app.config.get('API_VERSION')
     stripe.default_http_client = stripe.http_client.RequestsClient()
+
+    # Webflow CMS
+    webflow_cms = services.WebflowCMS(app.config['WEBFLOW_API_TOKEN'], app.config['WEBFLOW_CMS_COLLECTION_ID'])
 
     # init and hook resources
     config_resource = resources.ConfigResource.as_view('config_api')
