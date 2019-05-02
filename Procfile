@@ -1,1 +1,1 @@
-web: gunicorn checkout_server:app
+web: gunicorn checkout_server:application
