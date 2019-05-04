@@ -5,6 +5,7 @@ checkout-server.test_services
 ~~~~~~~~~~~~
 
 """
+# flake8: noqa
 import pytest
 import responses
 

@@ -105,6 +105,8 @@ class PayOrdersResource(CheckoutView):
             abort(404, 'Doodance: no order ID given')
         request_data = json.loads(request.data)
         source = request_data.get('source')
+        coupon_code = request_data.get('coupon_code')
+        new_price = request_data.get('new_price')
         try:
             # fetch order data
             order = self.stripe.Order.retrieve(order_id)
@@ -116,24 +118,38 @@ class PayOrdersResource(CheckoutView):
             if source_type and source_type == 'card':
                 source = dynamic_3ds(self.stripe, source, order)
             # pay order
-            source_status = source.get('status')
-            if source_status and source_status == 'chargeable':
-                order.pay(source=source['id'])
-            elif source_status and source_status == 'pending' or source_status == 'paid':
-                # Somehow this Order has already been paid for -- abandon request.
-                return jsonify({'source': source, 'order': order})
+            if new_price:
+                charge = self.stripe.Charge.create(
+                    amount=new_price,  # TODO: make sure it's in the right format i.e.: 2000 = 20.0
+                    currency=order['currency'],
+                    metadata={'order_id': order['id'],
+                              'customer': order['metadata']['customer'],
+                              'coupon_code': coupon_code}
+                )
+                if charge['paid']:
+                    self.stripe.Order.modify(order['id'], metadata={'charge_id': charge['id'],
+                                                                    'coupon_code': coupon_code,
+                                                                    'status': 'paid'})
+                    return jsonify({'order': order, 'source': source})
+                else:
+                    print('The charge was not paid: %s, for order %s' % (charge, order))
+                    abort(404, 'Doodance: the charge was not paid')
             else:
-                print('The source was not chargeable: %s, for order %s' % (source, order))
-                abort(404, 'Doodance: the source was not chargeable')
+                source_status = source.get('status')
+                if source_status and source_status == 'chargeable':
+                    order.pay(source=source['id'])
+                elif source_status and source_status == 'pending' or source_status == 'paid':
+                    # Somehow this Order has already been paid for -- abandon request.
+                    return jsonify({'source': source, 'order': order})
+                else:
+                    print('The source was not chargeable: %s, for order %s' % (source, order))
+                    abort(404, 'Doodance: the source was not chargeable')
 
-            return jsonify({'order': order, 'source': source})
+                return jsonify({'order': order, 'source': source})
 
         except InvalidRequestError as invalid_req_err:
             print(invalid_req_err.json_body.get('error'))
             abort(404, 'Doodance: order ID is unknown')
-        except Exception as e:
-            print(e)
-            abort(jsonify(error='Doodance: error while paying order %s' % e))
 
 
 class Webhook(CheckoutView):
@@ -192,9 +208,9 @@ class Webhook(CheckoutView):
             # Get the order data
             order = self.stripe.Order.retrieve(charge['source']['metadata']['order'])
             # Update the order metadata
-            if order.status != 'paid':
-                order.status = 'paid'
-                order.save()
+            self.stripe.Order.modify(order['id'], metadata={'charge_id': charge['id'],
+                                                            'coupon_code': charge['metadata'].get('coupon_code'),
+                                                            'status': 'paid'})
 
         # Monitor `source.failed`, `source.canceled`, and `charge.failed` events.
         if event['type'] in ['source.failed', 'source.canceled', 'charge.failed'] or \
@@ -206,9 +222,10 @@ class Webhook(CheckoutView):
                 # Get the order data
                 order = self.stripe.Order.retrieve(data_object['metadata']['order'])
                 # Update the order metadata
-                order.status = 'failed'
-                order.save()
-
+                self.stripe.Order.modify(order['id'], metadata={'charge_id': data_object['id'],
+                                                                'coupon_code': data_object['metadata'].get(
+                                                                    'coupon_code'),
+                                                                'status': 'failed'})
             return jsonify({'status': 'failed'})
 
         return jsonify({'status': 'success'})
