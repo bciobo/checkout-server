@@ -8,7 +8,8 @@ checkout-server.resources
 import json
 from stripe.error import InvalidRequestError
 from flask.views import MethodView
-from flask import current_app as app, jsonify, abort, request, send_from_directory
+from flask import current_app as app
+from flask import jsonify, abort, request, send_from_directory, make_response
 from checkout_server.models import InvalidCouponError, InvalidAmountError
 
 
@@ -246,18 +247,18 @@ class CouponResource(MethodView):
         price = request_data.get('price')
 
         if not coupon_code or not price:
-            return abort(400, 'Missing coupon code or price information.')
+            return abort(make_response(('Fehlrehafte Anfrage. Bitte versuchen Sie es erneut.', 400)))
 
+        price = float(price)
         coupon = self.coupon_cms.get_coupon_by_code(coupon_code)
 
         if not coupon:
-            return abort(404, 'No coupon found with this code.')
-
+            return abort(make_response(('Gutschein Code existiert nicht.', 404)))
         try:
             new_price = coupon.apply(price)
         except InvalidAmountError:
-            return abort(400, 'Invalid price lower than 0.')
+            return abort(make_response(('Fehlrehafte Anfrage. Bitte versuchen Sie es erneut.', 400)))
         except InvalidCouponError:
-            return abort(403, 'Coupon code not valid.')
+            return abort(make_response(('Gutschein Code ist abgelaufen.', 403)))
 
         return jsonify({'new_price': new_price, 'discount': price - new_price})
