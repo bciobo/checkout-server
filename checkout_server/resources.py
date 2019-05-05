@@ -13,12 +13,12 @@ from flask import jsonify, abort, request, send_from_directory, make_response
 from checkout_server.models import InvalidCouponError, InvalidAmountError
 
 
-def dynamic_3ds(stripe, source, order):
+def dynamic_3ds(stripe, source, order, amount):
     """
     Create a 3DS Secure payment Source if the Source is a card that requires it or if the Order is over 5000.
     """
-    if source['card']['three_d_secure'] == 'required' or order['amount'] > 5000:
-        source = stripe.Source.create(amount=order['amount'], currency=order['currency'], type='three_d_secure',
+    if source['card']['three_d_secure'] == 'required' or amount > 5000:
+        source = stripe.Source.create(amount=amount, currency=order['currency'], type='three_d_secure',
                                       three_d_secure={'card': source['id']}, metadata={'order': order['id']},
                                       redirect={'return_url': request.headers.get('origin')})
     return source
@@ -117,21 +117,25 @@ class PayOrdersResource(CheckoutView):
             source_type = source.get('type')
             # apply 3DS for card payments
             if source_type and source_type == 'card':
-                source = dynamic_3ds(self.stripe, source, order)
+                amount = new_price if new_price else order['amount']
+                source = dynamic_3ds(self.stripe, source, order, amount)
             # pay order
             if new_price:
+                source = self.stripe.Source.retrieve(source['id'])
                 charge = self.stripe.Charge.create(
                     amount=new_price,  # TODO: make sure it's in the right format i.e.: 2000 = 20.0
                     currency=order['currency'],
+                    source=source,
                     metadata={'order_id': order['id'],
                               'customer': order['metadata']['customer'],
                               'coupon_code': coupon_code}
                 )
-                if charge['paid']:
-                    self.stripe.Order.modify(order['id'], metadata={'charge_id': charge['id'],
-                                                                    'coupon_code': coupon_code,
-                                                                    'status': 'paid'})
-                    return jsonify({'order': order, 'source': source})
+                if charge['paid'] or (charge['captured'] and charge['status'] == 'pending'):
+                    updated_order = self.stripe.Order.modify(order['id'], metadata={'charge_id': charge['id'],
+                                                                                    'coupon_code': coupon_code,
+                                                                                    'status': 'paid'})
+                    updated_order['status'] = 'paid'
+                    return jsonify({'order': updated_order, 'source': source})
                 else:
                     print('The charge was not paid: %s, for order %s' % (charge, order))
                     abort(404, 'Doodance: the charge was not paid')
