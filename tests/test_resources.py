@@ -154,7 +154,7 @@ class PayOrdersResourceTestCase(unittest.TestCase):
         rsp = self.client.post(self.endpoint.format(order_id=self.order_id),
                                json={'source': mock_source, 'coupon_code': None, 'new_price': None})
         # assert
-        dynamic_3ds_mock.assert_called_once_with(self.stripe_mock, mock_source, mock_order)
+        dynamic_3ds_mock.assert_called_once_with(self.stripe_mock, mock_source, mock_order, 6900)
         pay_mock.assert_called_with(source=mock_source['id'])
         self.assertEqual(rsp.status_code, 200)
 
@@ -169,15 +169,18 @@ class PayOrdersResourceTestCase(unittest.TestCase):
         dynamic_3ds_mock.return_value = mock_source
         self.stripe_mock.Order.retrieve.return_value = mock_order
         self.stripe_mock.Order.modify = order_modify_mock
+        order_modify_mock.return_value = {}
         create_charge_mock.return_value = mock_charge
         self.stripe_mock.Charge.create = create_charge_mock
+        self.stripe_mock.Source.retrieve.return_value = mock_source
         # make the call
         rsp = self.client.post(self.endpoint.format(order_id=self.order_id),
                                json={'source': mock_source, 'coupon_code': 'TESTING50', 'new_price': 3000})
         # assert
-        dynamic_3ds_mock.assert_called_once_with(self.stripe_mock, mock_source, mock_order)
+        dynamic_3ds_mock.assert_called_once_with(self.stripe_mock, mock_source, mock_order, 3000)
         create_charge_mock.assert_called_once_with(amount=3000,
                                                    currency='eur',
+                                                   source=mock_source,
                                                    metadata={'order_id': self.order_id,
                                                              'customer': "bogdan",
                                                              'coupon_code': 'TESTING50'})
