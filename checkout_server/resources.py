@@ -199,7 +199,9 @@ class Webhook(CheckoutView):
             order = self.stripe.Order.retrieve(source['metadata']['order'])
             # Check the order is payable
             order_status = order.get('status')
-            if order_status in ['pending', 'paid', 'failed']:
+            order_metadata_status = order['metadata'].get('status')
+            if order_status in ['pending', 'paid', 'failed'] or order_metadata_status in ['pending', 'paid',
+                                                                                          'failed', None]:
                 abort(404, 'Doodance: Order cannot be paid because it has status "%s"' % order_status)
             # Pay the order
             order.pay(source=source['id'])
@@ -222,15 +224,13 @@ class Webhook(CheckoutView):
                 (data_object['object'] in ['source', 'charge'] and data_object['status'] in ['failed', 'canceled']):
 
             print('Doodance: Webhook received! Failure for %s' % data_object["id"])
-
-            if data_object['metadata'].get('order'):
-                # Get the order data
-                order = self.stripe.Order.retrieve(data_object['metadata']['order'])
+            order_id = data_object['metadata'].get('order_id')
+            if order_id:
                 # Update the order metadata
-                self.stripe.Order.modify(order['id'], metadata={'charge_id': data_object['id'],
-                                                                'coupon_code': data_object['metadata'].get(
-                                                                    'coupon_code'),
-                                                                'status': 'failed'})
+                self.stripe.Order.modify(order_id, metadata={'charge_id': data_object['id'],
+                                                             'coupon_code': data_object['metadata'].get(
+                                                                 'coupon_code'),
+                                                             'status': 'failed'})
             return jsonify({'status': 'failed'})
 
         return jsonify({'status': 'success'})
@@ -251,7 +251,7 @@ class CouponResource(MethodView):
         price = request_data.get('price')
 
         if not coupon_code or not price:
-            return abort(make_response(('Fehlrehafte Anfrage. Bitte versuchen Sie es erneut.', 400)))
+            return abort(make_response(('Fehlerhafte Anfrage. Bitte versuchen Sie es erneut.', 400)))
 
         price = float(price)
         coupon = self.coupon_cms.get_coupon_by_code(coupon_code)
@@ -261,7 +261,7 @@ class CouponResource(MethodView):
         try:
             new_price = coupon.apply(price)
         except InvalidAmountError:
-            return abort(make_response(('Fehlrehafte Anfrage. Bitte versuchen Sie es erneut.', 400)))
+            return abort(make_response(('Fehlerhafte Anfrage. Bitte versuchen Sie es erneut.', 400)))
         except InvalidCouponError:
             return abort(make_response(('Gutschein Code ist abgelaufen.', 403)))
 
