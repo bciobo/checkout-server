@@ -43,9 +43,19 @@ class Coupon:
 
     @staticmethod
     def _map_data_to_model(data):
-        return Coupon(data['_id'], data['_cid'], data['code'], data['name'], data['kurs'], data['prozent'],
-                      data['rabat-hohe'], data['eingelost'], data['erstellt'], data['gultig-bis'], data['updated-on'],
-                      data['created-on'], data['published-on'])
+        return Coupon(id=data['_id'],
+                      collection_id=data['_cid'],
+                      code=data['code'],
+                      name=data['name'],
+                      kurs=data['kurs'],
+                      prozent=data.get('prozent', False),
+                      rabat_hohe=data['rabat-hohe'],
+                      eingelost=data.get('eingelost', 0),
+                      erstellt=data['erstellt'],
+                      gultig_bis=data['gultig-bis'],
+                      updated_on=data['updated-on'],
+                      created_on=data['created-on'],
+                      published_on=data['published-on'])
 
     @property
     def is_expired(self):

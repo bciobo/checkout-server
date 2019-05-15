@@ -251,7 +251,7 @@ class CouponResource(MethodView):
         price = request_data.get('price')
 
         if not coupon_code or not price:
-            return abort(make_response(('Fehlerhafte Anfrage. Bitte versuchen Sie es erneut.', 400)))
+            return abort(make_response(('Fehler: bitte kontaktieren Sie uns unter kontakt@doodance.com.', 400)))
 
         price = float(price)
         coupon = self.coupon_cms.get_coupon_by_code(coupon_code)
@@ -261,8 +261,8 @@ class CouponResource(MethodView):
         try:
             new_price = coupon.apply(price)
         except InvalidAmountError:
-            return abort(make_response(('Fehlerhafte Anfrage. Bitte versuchen Sie es erneut.', 400)))
+            return abort(make_response(('Fehler: bitte kontaktieren Sie uns unter kontakt@doodance.com.', 400)))
         except InvalidCouponError:
             return abort(make_response(('Gutschein Code ist abgelaufen.', 403)))
 
-        return jsonify({'new_price': new_price, 'discount': price - new_price})
+        return jsonify({'new_price': round(new_price, 2), 'discount': round(price - new_price, 2)})
