@@ -169,6 +169,10 @@ class Webhook(CheckoutView):
     It pays the order or update the order metadata according to status of source/charge.
     """
 
+    def __init__(self, stripe, coupon_cms):
+        super(Webhook, self).__init__(stripe)
+        self.coupon_cms = coupon_cms
+
     def post(self):
         event = json.loads(request.data)
         webhook_secret = app.config.get('WEBHOOK_SECRET')
@@ -215,9 +219,12 @@ class Webhook(CheckoutView):
             # Get the order data
             order = self.stripe.Order.retrieve(charge['source']['metadata']['order'])
             # Update the order metadata
+            coupon_code = charge['metadata'].get('coupon_code')
             self.stripe.Order.modify(order['id'], metadata={'charge_id': charge['id'],
-                                                            'coupon_code': charge['metadata'].get('coupon_code'),
+                                                            'coupon_code': coupon_code,
                                                             'status': 'paid'})
+            if coupon_code:
+                self.coupon_cms.use_once(coupon=self.coupon_cms.get_coupon_by_code(coupon_code))
 
         # Monitor `source.failed`, `source.canceled`, and `charge.failed` events.
         if event['type'] in ['source.failed', 'source.canceled', 'charge.failed'] or \

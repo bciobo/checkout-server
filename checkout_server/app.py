@@ -49,7 +49,7 @@ def make_app(settings_override=None):
     products_resource = resources.ProductsResource.as_view('products_api', stripe)
     orders_resource = resources.OrdersResource.as_view('orders_api', stripe)
     pay_orders_resource = resources.PayOrdersResource.as_view('pay_orders_api', stripe)
-    webhook_resource = resources.Webhook.as_view('webhook', stripe)
+    webhook_resource = resources.Webhook.as_view('webhook', stripe, coupon_cms)
     static_resource = resources.Bundle.as_view('bundle')
     coupon_resource = resources.CouponResource.as_view('coupons', coupon_cms)
 
