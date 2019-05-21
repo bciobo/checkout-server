@@ -213,11 +213,11 @@ class Webhook(CheckoutView):
         # Monitor `charge.succeeded` events.
         if data_object['object'] == 'charge' \
                 and data_object['status'] == 'succeeded' \
-                and 'order' in data_object['source']['metadata']:
+                and 'order_id' in data_object['metadata']:
             charge = data_object
             print('Doodance: Webhook received! The charge %s succeeded' % charge["id"])
             # Get the order data
-            order = self.stripe.Order.retrieve(charge['source']['metadata']['order'])
+            order = self.stripe.Order.retrieve(charge['metadata']['order_id'])
             # Update the order metadata
             coupon_code = charge['metadata'].get('coupon_code')
             self.stripe.Order.modify(order['id'], metadata={'charge_id': charge['id'],
