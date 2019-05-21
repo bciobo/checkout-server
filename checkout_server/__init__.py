@@ -5,6 +5,6 @@ checkout-server.__init__.py
 ~~~~~~~~~~~~
 
 """
-from .app import make_app
+from checkout_server.app import make_app
 
-app = make_app()
+application = make_app()
