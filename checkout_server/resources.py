@@ -204,8 +204,7 @@ class Webhook(CheckoutView):
             # Check the order is payable
             order_status = order.get('status')
             order_metadata_status = order['metadata'].get('status')
-            if order_status in ['pending', 'paid', 'failed'] or order_metadata_status in ['pending', 'paid',
-                                                                                          'failed', None]:
+            if order_status in ['pending', 'paid', 'failed'] or order_metadata_status in ['pending', 'paid', 'failed']:
                 abort(404, 'Doodance: Order cannot be paid because it has status "%s"' % order_status)
             # Pay the order
             order.pay(source=source['id'])
