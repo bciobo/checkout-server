@@ -46,20 +46,33 @@ class ProductsResource(CheckoutView):
     Retrieve all or one product.
     """
 
-    def get(self, product_id):
-        if not product_id:
-            # return all available products
-            return jsonify(self.stripe.Product.list(active=True))
-        else:
-            # return product with passed ID
-            try:
-                product = self.stripe.Product.retrieve(id=product_id)
-                return jsonify(product)
-            except InvalidRequestError as invalid_req_err:
-                print(invalid_req_err.json_body.get('error'))
-            except Exception as e:
-                print(e)
-                abort(404, 'Doodance: product ID is unknown')
+    def get(self, product_name):
+        # fetch product with selected name
+        products = self.stripe.Product.list(active=True)
+        selected_course = next(p for p in products if p['name'] == product_name)
+        course_price = selected_course['skus']['data'][0]['price']
+        # this is a new customer session so send a new payment intent
+        payment_intent = self.stripe.PaymentIntent.create(
+            amount=course_price,
+            currency=app.config.get('CHECKOUT_CURRENCY', 'eur'),
+        )
+        return jsonify({'products': products, 'intent': payment_intent})
+
+
+class PaymentIntentsResource(CheckoutView):
+    """
+    Update metadata of payment intent.
+    """
+
+    def put(self, intent_id):
+        form_data = json.loads(request.data)
+        order_metadata = form_data['order']
+
+        updated_payment_intent = self.stripe.PaymentIntent.modify(
+            intent_id,
+            metadata=order_metadata
+        )
+        return jsonify({'intent': updated_payment_intent})
 
 
 class OrdersResource(CheckoutView):
@@ -123,7 +136,7 @@ class PayOrdersResource(CheckoutView):
             if new_price:
                 source = self.stripe.Source.retrieve(source['id'])
                 charge = self.stripe.Charge.create(
-                    amount=new_price,  # TODO: make sure it's in the right format i.e.: 2000 = 20.0
+                    amount=new_price,  # make sure it's in the right format i.e.: 2000 = 20.0
                     currency=order['currency'],
                     source=source,
                     metadata={'order_id': order['id'],
@@ -165,6 +178,7 @@ class Webhook(CheckoutView):
     - source.canceled
     - charge.failed
     - charge.succeeded
+    - payment_intent.succeeded
 
     It pays the order or update the order metadata according to status of source/charge.
     """
@@ -193,7 +207,28 @@ class Webhook(CheckoutView):
 
         data_object = data['object']
 
-        # Monitor `source.chargeable` events.
+        # Monitor `payment_intent` events.
+        if data_object['object'] == 'payment_intent':
+            payment_intent = data_object
+            print('Status of payment intent', payment_intent['status'])
+            order_metadata = payment_intent['metadata']
+            items = [{'type': 'sku', 'parent': order_metadata['sku'], 'quantity': 1}]
+            coupon_code = payment_intent['metadata'].get('coupon_code')
+
+            if payment_intent['status'] == 'succeeded':
+                new_order = self.stripe.Order.create(
+                    currency=order_metadata.get('currency'),
+                    items=items,
+                    email=order_metadata.get('email'),
+                    metadata={'country': order_metadata.get('country'),
+                              'customer': order_metadata.get('customer'),
+                              'payment_intent': payment_intent['id'],
+                              'coupon_code': coupon_code,
+                              'status': 'paid'}
+                )
+                print('New order created after successful card payment {}'.format(new_order["id"]))
+                return jsonify({'status': 'success'})
+
         if data_object['object'] == 'source' \
                 and data_object['status'] == 'chargeable' \
                 and 'order' in data_object['metadata']:
@@ -247,14 +282,16 @@ class Bundle(MethodView):
         return send_from_directory('bundle', filename)
 
 
-class CouponResource(MethodView):
-    def __init__(self, coupon_cms):
+class CouponResource(CheckoutView):
+    def __init__(self, stripe, coupon_cms):
+        super(CouponResource, self).__init__(stripe)
         self.coupon_cms = coupon_cms
 
     def post(self):
         request_data = json.loads(request.data)
         coupon_code = request_data.get('code')
         price = request_data.get('price')
+        payment_intent_id = request_data.get('payment_intent_id')
 
         if not coupon_code or not price:
             return abort(make_response(('Fehler: bitte kontaktieren Sie uns unter kontakt@doodance.com.', 400)))
@@ -270,5 +307,13 @@ class CouponResource(MethodView):
             return abort(make_response(('Fehler: bitte kontaktieren Sie uns unter kontakt@doodance.com.', 400)))
         except InvalidCouponError:
             return abort(make_response(('Gutschein Code ist abgelaufen.', 403)))
+        # update amount store in payment intent
+        payment_intent = self.stripe.PaymentIntent.modify(
+            payment_intent_id,
+            amount=int(round(new_price, 2) * 100),
+            metadata={'coupon_code': coupon_code}
+        ) if payment_intent_id else None
 
-        return jsonify({'new_price': round(new_price, 2), 'discount': round(price - new_price, 2)})
+        return jsonify({'new_price': round(new_price, 2),
+                        'discount': round(price - new_price, 2),
+                        'payment_intent': payment_intent})
