@@ -208,7 +208,7 @@ class Webhook(CheckoutView):
         data_object = data['object']
 
         # Monitor `payment_intent` events.
-        if data_object['object'] == 'payment_intent':
+        if data_object['object'] == 'payment_intent' and data_object['status'] == 'succeeded':
             payment_intent = data_object
             print('Status of payment intent', payment_intent['status'])
             order_metadata = payment_intent['metadata']
