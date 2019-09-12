@@ -51,15 +51,16 @@ def make_app(settings_override=None):
     pay_orders_resource = resources.PayOrdersResource.as_view('pay_orders_api', stripe)
     webhook_resource = resources.Webhook.as_view('webhook', stripe, coupon_cms)
     static_resource = resources.Bundle.as_view('bundle')
-    coupon_resource = resources.CouponResource.as_view('coupons', coupon_cms)
+    coupon_resource = resources.CouponResource.as_view('coupons', stripe, coupon_cms)
+    payment_intent_resource = resources.PaymentIntentsResource.as_view('intents', stripe)
 
     # config
     app.add_url_rule('/config/',
                      view_func=config_resource, methods=['GET', ])
     # products
-    app.add_url_rule('/products/', defaults={'product_id': None},
+    app.add_url_rule('/products/', defaults={'product_name': None},
                      view_func=products_resource, methods=['GET', ])
-    app.add_url_rule('/products/<product_id>',
+    app.add_url_rule('/products/<product_name>',
                      view_func=products_resource, methods=['GET', ])
     # orders
     app.add_url_rule('/orders/',
@@ -74,9 +75,12 @@ def make_app(settings_override=None):
     # static files
     app.add_url_rule('/bundle/<path:filename>',
                      view_func=static_resource, methods=['GET', ])
-    # webhook
+    # coupon
     app.add_url_rule('/validate-coupon/',
                      view_func=coupon_resource, methods=['POST', ])
+    # payment_intent
+    app.add_url_rule('/intents/<intent_id>',
+                     view_func=payment_intent_resource, methods=['PUT', ])
 
     CORS(app)
     return app
